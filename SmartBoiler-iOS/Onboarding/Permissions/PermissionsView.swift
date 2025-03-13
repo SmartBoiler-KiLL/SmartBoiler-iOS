@@ -28,7 +28,7 @@ struct PermissionsView: View {
                 PermissionSection(title: "Location", description: "Save where KiLL is located", systemImage: "mappin", permission: permissionForLocation, askPermission: askPermissionForLocation)
             }
             .padding()
-            .background(.darkGray)
+            .background(.darkKiLLGray)
             .clipShape(.rect(cornerRadius: 24))
         }
         .navigationBarBackButtonHidden()
