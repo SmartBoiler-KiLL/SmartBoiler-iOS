@@ -107,6 +107,8 @@
 			);
 			mainGroup = 4A11AE522D695D2300D8F5B2;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4A11AE5C2D695D2300D8F5B2 /* Products */;
 			projectDirPath = "";
@@ -272,6 +274,10 @@
 				INFOPLIST_FILE = "SmartBoiler-iOS/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = KiLL;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Setup your SmartBoiler.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Setup your SmartBoiler.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Setup your SmartBoiler.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -309,6 +315,10 @@
 				INFOPLIST_FILE = "SmartBoiler-iOS/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = KiLL;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "Setup your SmartBoiler.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Setup your SmartBoiler.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Setup your SmartBoiler.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

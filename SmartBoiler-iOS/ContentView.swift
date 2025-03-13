@@ -13,11 +13,8 @@ struct ContentView: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                LinearGradient.backgroundGradient.ignoresSafeArea()
-                if numbers.isEmpty {
-                    OnboardingHero()
-                }
+            if numbers.isEmpty {
+                OnboardingHero()
             }
         }
     }

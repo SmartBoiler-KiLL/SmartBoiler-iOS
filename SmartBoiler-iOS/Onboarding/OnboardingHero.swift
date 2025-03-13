@@ -56,8 +56,8 @@ struct OnboardingHero: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding()
             }
-            
         }
+        .mainBackgroundGradient()
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.bouncy) {
