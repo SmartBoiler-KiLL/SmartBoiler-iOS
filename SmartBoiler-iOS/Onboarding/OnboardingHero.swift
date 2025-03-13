@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// The hero view of the onboarding screen.
 struct OnboardingHero: View {
     
     @State var appeared = false

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// A view that asks for the necessary permissions to setup KiLL.
 struct PermissionsView: View {
     
     @State var permissionForLocalNetwork = false

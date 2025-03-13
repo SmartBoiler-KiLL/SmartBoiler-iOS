@@ -8,6 +8,7 @@
 import SwiftUI
 
 extension View {
+    /// Applies a background gradient to the view.
     func mainBackgroundGradient(alignment: Alignment = .center) -> some View {
         self
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// A section to ask for permissions and show their status.
 struct PermissionSection: View {
     
     let title: String
