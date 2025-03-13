@@ -10,7 +10,8 @@ import SwiftUI
 struct PermissionsView: View {
     
     @State var permissionForLocalNetwork = false
-    @State var permissionForLocation = false
+    
+    @State var locationPermission = LocationManager()
     
     var body: some View {
         VStack(spacing: 15) {
@@ -25,11 +26,26 @@ struct PermissionsView: View {
             
             Group {
                 PermissionSection(title: "Local Network", description: "Setup and connect your KiLL to WiFi.", systemImage: "globe", permission: permissionForLocalNetwork, askPermission: askPermissionForLocalNetwork)
-                PermissionSection(title: "Location", description: "Save where KiLL is located", systemImage: "mappin", permission: permissionForLocation, askPermission: askPermissionForLocation)
+                PermissionSection(title: "Location", description: "Save where KiLL is located", systemImage: "mappin", permission: locationPermission.locationPermissionGranted, askPermission: locationPermission.requestPermission)
             }
             .padding()
             .background(.darkKiLLGray)
             .clipShape(.rect(cornerRadius: 24))
+            
+            if permissionForLocalNetwork && locationPermission.locationPermissionGranted {
+                NavigationLink(destination: Text("WiFi View").navigationBarBackButtonHidden()) {
+                    HStack {
+                        Text("Setup My First KiLL")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.title.bold())
+                    .foregroundStyle(.white)
+                    .padding()
+                    .background(.darkKiLLGray)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .transition(.move(edge: .bottom))
+                }
+            }
         }
         .navigationBarBackButtonHidden()
         .padding()
@@ -37,12 +53,12 @@ struct PermissionsView: View {
     }
     
     func askPermissionForLocalNetwork() {
-        
+        LocalNetworkPermission().requestPermission { status in
+            withAnimation {
+                permissionForLocalNetwork = status
+            }
+        }
     }
-    
-    func askPermissionForLocation() {
-    }
-
 }
 
 #Preview {
