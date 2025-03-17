@@ -34,7 +34,7 @@ struct PermissionsView: View {
             .clipShape(.rect(cornerRadius: 24))
             
             if permissionForLocalNetwork && locationPermission.locationPermissionGranted {
-                NavigationLink(destination: Text("WiFi View").navigationBarBackButtonHidden()) {
+                NavigationLink(destination: BoilerView().navigationBarBackButtonHidden()) {
                     HStack {
                         Text("Setup My First KiLL")
                         Image(systemName: "chevron.right")
