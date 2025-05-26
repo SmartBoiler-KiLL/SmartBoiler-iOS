@@ -6,17 +6,20 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
 
     @AppStorage("AppID") var appId = ""
 
-    let numbers: [Int] = []
-    
+    @Query var boilers: [KiLLBoiler]
+
     var body: some View {
         NavigationStack {
-            if numbers.isEmpty {
+            if boilers.isEmpty {
                 OnboardingHero()
+            } else {
+                
             }
         }
         .onAppear {

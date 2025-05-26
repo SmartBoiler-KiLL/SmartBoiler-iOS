@@ -14,5 +14,6 @@ struct KiLLApp: App {
             ContentView()
                 .preferredColorScheme(.dark)
         }
+        .modelContainer(for: [KiLLBoiler.self])
     }
 }
