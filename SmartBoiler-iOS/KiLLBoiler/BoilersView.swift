@@ -14,9 +14,11 @@ struct BoilersView: View {
 
     var boilers: [KiLLBoiler]
 
+    @State var showAddBoiler = false
+
     var body: some View {
         List(boilers) { boiler in
-            Text("\(boiler)")
+            Text("\(boiler.id) \(boiler.name)")
                 .contextMenu {
                     Button("Delete", systemImage: "trash", role: .destructive) {
                         modelContext.delete(boiler)
@@ -24,6 +26,17 @@ struct BoilersView: View {
                     }
                 }
         }
+        .scrollContentBackground(.hidden)
+        .mainBackgroundGradient()
         .navigationTitle("Boilers")
+        .toolbar {
+            Button("Add KiLL", systemImage: "gauge.with.dots.needle.bottom.50percent.badge.plus") {
+                showAddBoiler.toggle()
+            }
+            .tint(.white)
+        }
+        .fullScreenCover(isPresented: $showAddBoiler) {
+            SetupView(isFirstSetup: false)
+        }
     }
 }

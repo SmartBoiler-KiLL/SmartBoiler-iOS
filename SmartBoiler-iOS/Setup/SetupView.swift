@@ -27,6 +27,10 @@ struct SetupView: View {
                 Text("KiLL Setup")
                     .font(.largeTitle.bold())
                     .padding(.top, isFirstSetup ? 20 : 0)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .trailing) {
+
+                    }
 
                 Group {
                     SetupKiLLConnectionView()
@@ -55,11 +59,12 @@ struct SetupView: View {
         .environment(localNetworkManager)
         .environment(locationManager)
         .mainBackgroundGradient(alignment: .top)
-        .toolbar {
+        .overlay(alignment: .topTrailing) {
             if !isFirstSetup {
-                Button("Close", systemImage: "xmark") {
-                }
-                .tint(.white)
+                Button("", systemImage: "xmark", action: dismiss.callAsFunction)
+                    .tint(.white)
+                    .padding()
+                    .padding(.top, -10)
             }
         }
     }
