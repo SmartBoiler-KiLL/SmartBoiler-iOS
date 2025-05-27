@@ -16,7 +16,7 @@ import SwiftUI
 
     var stringURL: String {
         if isUsingmDNS {
-            return "http://\(mDNSAddress).local"
+            return "http://KiLL-\(mDNSAddress).local"
         } else {
             return "http://\(ipAddress)"
         }
@@ -27,7 +27,7 @@ import SwiftUI
             do {
                 let response = try await URLSession.shared.data(from: URL(string: "http://\(ipAddress)/local")!)
                 if let result = String(data: response.0, encoding: .utf8) {
-                    if result.starts(with: "KiLL-") {
+                    if result.count == 12 {
                         print("mDNS URL: \(result)")
                         withAnimation(.bouncy) {
                             mDNSAddress = result
@@ -45,40 +45,56 @@ import SwiftUI
         }
     }
 
-    func sendSetupCredentials(ssid: String, password: String, appId: String) {
-        Task {
-            do {
-                let url = URL(string: "\(stringURL)/setup")!
-                var request = URLRequest(url: url)
-                request.httpBody = try JSONEncoder().encode(["ssid": ssid, "password": password, "appId": appId])
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    func sendSetupCredentials(ssid: String, password: String, appId: String) async -> String? {
+        await UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 
-                let (data, _) = try await URLSession.shared.data(for: request)
+        guard let url = URL(string: "\(stringURL)/setup") else {
+            return "Invalid URL"
+        }
 
-                struct ServerResponse: Decodable {
-                    let status: String?
-                    let error: String?
-                }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-                let decoded = try JSONDecoder().decode(ServerResponse.self, from: data)
+        do {
+            request.httpBody = try JSONEncoder().encode([
+                "ssid": ssid,
+                "password": password,
+                "appId": appId
+            ])
+        } catch {
+            return "Failed to encode JSON: \(error.localizedDescription)"
+        }
 
-                if let status = decoded.status, status == "OK" {
-                    print("Setup credentials sent successfully.")
-                    setupSuccessfully = true
-                } else if let errorMessage = decoded.error {
-                    print("Error sending setup credentials: \(errorMessage)")
-                    setupSuccessfully = false
-                } else {
-                    print("Unexpected response from server.")
-                    setupSuccessfully = false
-                }
-            } catch {
-                print("Error sending setup credentials: \(error)")
-                setupSuccessfully = false
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = 40
+        sessionConfig.timeoutIntervalForResource = 40
+        let session = URLSession(configuration: sessionConfig)
+
+        do {
+            let (data, _) = try await session.data(for: request)
+
+            struct ServerResponse: Decodable {
+                let status: String?
+                let error: String?
             }
+
+            let decoded = try JSONDecoder().decode(ServerResponse.self, from: data)
+
+            if let status = decoded.status, status == "OK" {
+                setupSuccessfully = true
+                return nil
+            } else if let errorMessage = decoded.error {
+                setupSuccessfully = false
+                return errorMessage
+            } else {
+                setupSuccessfully = false
+                return "Unexpected server response"
+            }
+
+        } catch {
+            setupSuccessfully = false
+            return "Network error: \(error.localizedDescription)"
         }
     }
-
 }
-

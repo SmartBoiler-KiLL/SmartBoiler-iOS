@@ -13,21 +13,28 @@ struct ContentView: View {
     @AppStorage("AppID") var appId = ""
 
     @Query var boilers: [KiLLBoiler]
+    @State var showSetup = false
 
     var body: some View {
         NavigationStack {
-            if boilers.isEmpty {
-                OnboardingHero()
-            } else {
-                
-            }
+            BoilersView(boilers: boilers)
+        }
+        .fullScreenCover(isPresented: $showSetup) {
+            OnboardingHero()
         }
         .onAppear {
+            showSetup = boilers.isEmpty
+            
             if appId.isEmpty {
                 appId = UUID().uuidString.prefix(8).description
                 print("Assigned appId: \(appId)")
             } else {
                 print("Existing appId: \(appId)")
+            }
+        }
+        .onChange(of: boilers.count) {
+            if boilers.count == 0 {
+                showSetup = true
             }
         }
     }

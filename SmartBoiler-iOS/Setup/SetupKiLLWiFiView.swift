@@ -11,17 +11,15 @@ struct SetupKiLLWiFiView: View {
 
     @Environment(LocalNetworkManager.self) var localNetworkManager
 
-    let maximumAttempts = 10
-
     @AppStorage("AppID") var appId = ""
 
-    @State var wifiSSID = ""
-    @State var wifiPassword = ""
+    @Binding var wifiSSID: String
+    @State var wifiPassword = "7WNr3uRwH4"
 
-    @State var setupAttempt = 0
     @State var sendingCredentials = false
 
     @State var showErrorAlert = false
+    @State var errorMessage = ""
 
     var body: some View {
         VStack {
@@ -45,57 +43,47 @@ struct SetupKiLLWiFiView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.darkKiLLGray)
                 .foregroundStyle(.white)
-                .disabled(wifiSSID.isReallyEmpty || wifiPassword.isEmpty || sendingCredentials)
+                .disabled(wifiSSID.isReallyEmpty || wifiPassword.isEmpty)
 
             if sendingCredentials {
-                ProgressView("Sending credentials... (Attempt \(setupAttempt)/\(maximumAttempts)")
+                ProgressView("Trying to connect to \(wifiSSID)\nThis may take up to 30 seconds...")
+                    .tint(.darkKiLLGray)
+                    .multilineTextAlignment(.center)
             }
         }
+        .disabled(localNetworkManager.setupSuccessfully == true || sendingCredentials)
         .foregroundStyle(.gray)
         .padding()
         .background(.white)
         .clipShape(.rect(cornerRadius: 12))
         .alert("Setup Not Successful", isPresented: $showErrorAlert) {
             Button("Retry", role: .cancel, action: retrySetup)
-            Button("Cancel", role: .destructive) {
+            Button("Edit Info") {
                 showErrorAlert = false
                 sendingCredentials = false
             }
         } message: {
-            Text("Please make sure that KiLL is powered on and you're connected to its network.")
+            Text(errorMessage)
         }
     }
 
     func sendCredentials() {
-        sendingCredentials = true
-        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
-            localNetworkManager.sendSetupCredentials(ssid: wifiSSID, password: wifiPassword, appId: appId)
-            if localNetworkManager.setupSuccessfully == true {
-                timer.invalidate()
-                withAnimation {
-                    sendingCredentials = false
-                }
-            } else if localNetworkManager.setupSuccessfully == false {
-                print("Failed send setup credentials attempt \(setupAttempt)")
-                if setupAttempt >= maximumAttempts {
-                    timer.invalidate()
-                    sendingCredentials = false
-                    showErrorAlert = true
-                } else {
-                    setupAttempt += 1
-                }
+        Task {
+            sendingCredentials = true
+            if let error = await localNetworkManager.sendSetupCredentials(ssid: wifiSSID, password: wifiPassword, appId: appId) {
+                errorMessage = error
+                showErrorAlert = true
+            } else {
+                print("Successfully sent credentials to KiLL.")
             }
+            sendingCredentials = false
         }
     }
 
     func retrySetup() {
+        errorMessage = ""
         sendingCredentials = true
         showErrorAlert = false
-        setupAttempt = 1
         sendCredentials()
     }
-}
-
-#Preview {
-    SetupKiLLWiFiView()
 }
