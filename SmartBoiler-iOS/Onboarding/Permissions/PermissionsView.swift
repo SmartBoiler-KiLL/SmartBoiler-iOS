@@ -19,7 +19,7 @@ struct PermissionsView: View {
             Text("Permissions")
                 .font(.title)
                 .fontWeight(.black)
-            
+
             Text("Let’s start by giving the app the necessary permissions to setup KiLL")
                 .font(.title2)
                 .multilineTextAlignment(.center)
@@ -34,16 +34,21 @@ struct PermissionsView: View {
             .clipShape(.rect(cornerRadius: 24))
             
             if permissionForLocalNetwork && locationPermission.locationPermissionGranted {
-                NavigationLink(destination: BoilerView().navigationBarBackButtonHidden()) {
+                NavigationLink(
+                    destination:
+                        SetupView(isFirstSetup: true)
+                            .navigationBarBackButtonHidden()
+                ) {
                     HStack {
                         Text("Setup My First KiLL")
                         Image(systemName: "chevron.right")
                     }
                     .font(.title.bold())
                     .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
                     .padding()
                     .background(.darkKiLLGray)
-                    .clipShape(.rect(cornerRadius: 12))
+                    .clipShape(.rect(cornerRadius: 16))
                     .transition(.move(edge: .bottom))
                 }
             }

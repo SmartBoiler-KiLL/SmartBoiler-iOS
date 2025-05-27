@@ -23,6 +23,10 @@ import CoreLocation
     func requestPermission() {
         locationManager.requestWhenInUseAuthorization()
     }
+
+    func getLocation() -> CLLocationCoordinate2D? {
+        return locationManager.location?.coordinate
+    }
     
     /// Update the permission granted status.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
