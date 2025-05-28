@@ -17,9 +17,11 @@ struct BoilerDetailView: View {
     @State var hasGoneToSettings = false
     @State var showingConnectedProgress = false
 
+    @State private var debounceTask: Task<Void, Never>?
+
     var body: some View {
         VStack {
-            if viewModel.boilerStatus == .disconnected && viewModel.boilerFailedAttempts >= KiLLBoiler.failedAttemptsToShowDisconnected {
+            if viewModel.boilerStatus == .disconnected || viewModel.boilerFailedAttempts >= KiLLBoiler.failedAttemptsToShowDisconnected {
                 BoilerDetailNetworkErrorView(viewModel: viewModel, hasGoneToSettings: $hasGoneToSettings, showingConnectedProgress: $showingConnectedProgress)
             }
 
@@ -31,5 +33,8 @@ struct BoilerDetailView: View {
         .padding()
         .mainBackgroundGradient(alignment: .topLeading)
         .toolbar(.hidden)
+        .onChange(of: viewModel.boilerTargetTemperature) {
+            viewModel.setTargetTemperature()
+        }
     }
 }

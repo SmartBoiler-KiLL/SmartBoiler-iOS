@@ -78,6 +78,7 @@ final class KiLLBoiler: Identifiable {
     @MainActor
     func updateStatus(sendingRequest: Bool) async {
         guard let response: ServerResponse = await postRequest(to: "status") else {
+            print("Failed to fetch status for \(name)")
             await MainActor.run {
                 if failedAttempts >= Self.failedAttemptsToShowDisconnected {
                     status = .disconnected
@@ -93,7 +94,9 @@ final class KiLLBoiler: Identifiable {
            let localIP = response.localIP {
             await MainActor.run {
                 if sendingRequest { return } // Ignore updates while sending requests
-                self.targetTemperature = target
+                if target >= Self.minimumTemperature && target <= Self.maximumTemperature {
+                    self.targetTemperature = target
+                }
                 self.currentTemperature = current
                 self.status = isOn == 1 ? .turnedOn : .turnedOff
                 self.lastConnection = .now
@@ -127,6 +130,24 @@ final class KiLLBoiler: Identifiable {
             }
         } else if let error = response.error {
             print("Error toggling boiler for \(name): \(error)")
+        } else {
+            print("Unexpected response from server for \(name): \(response)")
+        }
+    }
+
+    @MainActor func setTargetTemperature() async {
+        print("Setting target temperature for \(name): \(targetTemperature)°C")
+        let command = KiLLCommand(command: "set_temperature", value: targetTemperature)
+
+        guard let response: SimpleServerResponse = await postRequest(to: "command", with: command) else {
+            print("Failed to set target temperature for \(name)")
+            return
+        }
+
+        if let status = response.status, status == "OK" {
+            print("Target temperature set successfully for \(name)")
+        } else if let error = response.error {
+            print("Error setting target temperature for \(name): \(error)")
         } else {
             print("Unexpected response from server for \(name): \(response)")
         }

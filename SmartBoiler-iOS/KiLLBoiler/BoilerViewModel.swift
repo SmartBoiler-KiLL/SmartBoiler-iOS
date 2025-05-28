@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import MapKit
 
 @Observable
@@ -14,6 +15,7 @@ final class BoilerViewModel {
     var isMainViewActive = false
     var sendingRequest = false
     var updateTask: Task<Void, Never>? = nil
+    var debounceTemperatureTask: Task<Void, Never>? = nil
 
     init(boiler: KiLLBoiler) {
         self.boiler = boiler
@@ -69,6 +71,30 @@ final class BoilerViewModel {
             sendingRequest = true
             await boiler.toggleBoiler()
             sendingRequest = false
+        }
+    }
+
+    func setTargetTemperature() {
+        debounceTemperatureTask?.cancel()
+
+        debounceTemperatureTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            sendingRequest = true
+            await boiler.setTargetTemperature()
+            sendingRequest = false
+        }
+
+    }
+
+    func deleteBoiler(modelContext: ModelContext, dismiss: @escaping () -> Void) {
+        Task {
+            let response = await boiler.resetKiLL()
+            if response {
+                dismiss()
+                isMainViewActive = false
+                modelContext.delete(boiler)
+                try? modelContext.save()
+            }
         }
     }
 }

@@ -45,25 +45,15 @@ struct BoilerDetailSettingsView: View {
             }
         }
         .alert("Delete & Reset KiLL", isPresented: $showDeleteAlert) {
-            Button("Delete", role: .destructive, action: deleteBoiler)
+            Button("Delete", role: .destructive) {
+                viewModel.deleteBoiler(modelContext: modelContext, dismiss: dismiss.callAsFunction)
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will delete the KiLL from the app and reset it to factory settings. Are you sure?")
         }
         .onChange(of: viewModel.boiler.networkSelection) {
             viewModel.boiler.localIP = viewModel.boiler.networkSelection == .kill ? KiLLBoiler.localNetworkIP : nil
-        }
-    }
-
-    func deleteBoiler() {
-        Task {
-            let response = await viewModel.boiler.resetKiLL()
-            if response {
-                dismiss()
-                viewModel.isMainViewActive = false
-                modelContext.delete(viewModel.boiler)
-                try? modelContext.save()
-            }
         }
     }
 }

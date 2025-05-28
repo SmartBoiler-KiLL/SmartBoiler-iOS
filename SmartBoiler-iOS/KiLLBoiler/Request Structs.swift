@@ -14,7 +14,7 @@ struct ServerResponse: Decodable {
 
 struct KiLLCommand: Encodable {
     let command: String
-    let value: Int8
+    let value: Int
 }
 
 struct SimpleServerResponse: Decodable {
