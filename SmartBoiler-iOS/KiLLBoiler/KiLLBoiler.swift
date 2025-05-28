@@ -22,6 +22,8 @@ final class KiLLBoiler: Identifiable {
     var targetTemperature: Double
     var lastConnection: Date
 
+    @Attribute(.ephemeral) var localIP: String?
+
     private var latitude: Double
     private var longitude: Double
 
@@ -39,7 +41,7 @@ final class KiLLBoiler: Identifiable {
         self.longitude = location?.longitude ?? 0
     }
 
-    var status: Status = Status.turnedOff
+    @Attribute(.ephemeral) var status: Status = Status.disconnected
 
     enum Status: Int, Codable {
         case disconnected
@@ -61,50 +63,70 @@ final class KiLLBoiler: Identifiable {
         }
     }
 
-    @MainActor func updateStatus() async {
-        guard let url = URL(string: "http://192.168.1.142/status") else { return }
-        guard let appId = UserDefaults.standard.string(forKey: "AppID") else { return print("AppID not found") }
+    @MainActor
+    func getLocalIP() async {
+        guard let response: String = await postRequest(to: "\(hostname)/local_ip") else { return }
+        self.localIP = response
+        print("Local IP for \(name): \(response)")
+    }
+
+    @MainActor
+    func updateStatus() async {
+        guard let localIP else { return }
+        struct ServerResponse: Decodable {
+            let targetTemperature: Double?
+            let currentTemperature: Double?
+            let isOn: Int?
+        }
+
+        guard let response: ServerResponse = await postRequest(to: "http://\(localIP)/status") else {
+            status = .disconnected
+            return
+        }
+
+        if let target = response.targetTemperature,
+           let current = response.currentTemperature,
+           let isOn = response.isOn {
+            self.targetTemperature = target
+            self.currentTemperature = current
+            self.status = isOn == 1 ? .turnedOn : .turnedOff
+            self.lastConnection = .now
+        } else {
+            print("Invalid response from server for \(name)")
+            status = .disconnected
+        }
+    }
+
+    // MARK: - Shared POST Request Helper
+
+    private func postRequest<T: Decodable>(to endpoint: String) async -> T? {
+        guard let url = URL(string: endpoint) else { return nil }
+        guard let appId = UserDefaults.standard.string(forKey: "AppID") else {
+            print("AppID not found")
+            return nil
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(["appId": appId, "espId": id])
+
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 15
+        let session = URLSession(configuration: config)
 
         do {
-            request.httpBody = try JSONEncoder().encode([
-                "appId": appId,
-                "espId": id
-            ])
-
-            let sessionConfig = URLSessionConfiguration.default
-            sessionConfig.timeoutIntervalForRequest = 15
-            sessionConfig.timeoutIntervalForResource = 15
-
-            let session = URLSession(configuration: sessionConfig)
-
             let (data, _) = try await session.data(for: request)
-
-            struct ServerResponse: Decodable {
-                let targetTemperature: Double?
-                let currentTemperature: Double?
-                let isOn: Int?
-            }
-
-            let decoded = try JSONDecoder().decode(ServerResponse.self, from: data)
-
-            if let targetTemperature = decoded.targetTemperature, let currentTemperature = decoded.currentTemperature, let isOn = decoded.isOn {
-                self.targetTemperature = targetTemperature
-                self.currentTemperature = currentTemperature
-                self.status = isOn == 1 ? .turnedOn : .turnedOff
-                self.lastConnection = .now
+            // If T is String, decode manually
+            if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
+                return string
             } else {
-                print("Invalid response from server for \(name)")
-                status = .disconnected
+                return try JSONDecoder().decode(T.self, from: data)
             }
         } catch {
-            print("Error updating status for \(name): \(error.localizedDescription)")
-            DispatchQueue.main.async {
-                self.status = .disconnected
-            }
+            print("POST to \(endpoint) failed: \(error.localizedDescription)")
+            return nil
         }
     }
 }

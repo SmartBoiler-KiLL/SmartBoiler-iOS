@@ -63,7 +63,11 @@ struct BoilerRow: View {
         .task {
             while true {
                 if !sendingRequest {
-                    await boiler.updateStatus()
+                    if boiler.localIP == nil {
+                        await boiler.getLocalIP()
+                    } else {
+                        await boiler.updateStatus()
+                    }
                 }
                 try? await Task.sleep(for: .milliseconds(500))
             }
