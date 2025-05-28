@@ -75,25 +75,29 @@ final class KiLLBoiler: Identifiable {
 
     @MainActor
     func updateStatus() async {
-        guard let localIP else { return }
         struct ServerResponse: Decodable {
             let targetTemperature: Double?
             let currentTemperature: Double?
             let isOn: Int?
+            let localIP: String?
         }
 
-        guard let response: ServerResponse = await postRequest(to: "http://\(localIP)/status") else {
+        let urlString = localIP == nil ? hostname : "http://\(localIP!)"
+
+        guard let response: ServerResponse = await postRequest(to: "\(urlString)/status") else {
             status = .disconnected
             return
         }
 
         if let target = response.targetTemperature,
            let current = response.currentTemperature,
-           let isOn = response.isOn {
+           let isOn = response.isOn,
+           let localIP = response.localIP {
             self.targetTemperature = target
             self.currentTemperature = current
             self.status = isOn == 1 ? .turnedOn : .turnedOff
             self.lastConnection = .now
+            self.localIP = localIP
         } else {
             print("Invalid response from server for \(name)")
             status = .disconnected

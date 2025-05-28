@@ -17,6 +17,7 @@ struct BoilerRow: View {
         return MKCoordinateRegion(center: location, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
     }
 
+    @State var isMainViewActive = false
     @State var sendingRequest = false
 
     var body: some View {
@@ -27,7 +28,6 @@ struct BoilerRow: View {
                 }
                 .frame(height: 200)
                 .frame(maxWidth: .infinity)
-                .allowsHitTesting(false)
             }
 
             HStack {
@@ -49,7 +49,7 @@ struct BoilerRow: View {
                 }
 
                 Button("", systemImage: boiler.status.systemImage) {
-
+                    
                 }
                 .font(.title2.bold())
                 .foregroundStyle(boiler.status == .disconnected ? .red : .white)
@@ -60,17 +60,28 @@ struct BoilerRow: View {
             .background(LinearGradient(colors: [.darkKiLLGray, .darkKiLLGray.opacity(0.2)], startPoint: .bottom, endPoint: .top))
         }
         .clipShape(.rect(cornerRadius: 12))
+        .onTapGesture {
+            isMainViewActive = true
+        }
+        .navigationDestination(isPresented: $isMainViewActive) {
+            BoilerView(boiler: boiler)
+        }
         .task {
-            while true {
-                if !sendingRequest {
-                    if boiler.localIP == nil {
-                        await boiler.getLocalIP()
-                    } else {
-                        await boiler.updateStatus()
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(500))
+            keepBoilerUpdated()
+        }
+        .onChange(of: isMainViewActive) {
+            if !isMainViewActive {
+                keepBoilerUpdated()
             }
+        }
+    }
+
+    func keepBoilerUpdated() {
+        Task {
+            repeat {
+                await boiler.updateStatus()
+                try? await Task.sleep(for: .milliseconds(500))
+            } while true
         }
     }
 }
