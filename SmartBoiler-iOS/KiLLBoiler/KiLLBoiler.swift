@@ -65,7 +65,10 @@ final class KiLLBoiler: Identifiable {
 
     @MainActor
     func getLocalIP() async {
-        guard let response: String = await postRequest(to: "\(hostname)/local_ip") else { return }
+        guard let response: String = await postRequest(to: "\(hostname)/local_ip") else {
+            self.status = .disconnected
+            return
+        }
         self.localIP = response
         print("Local IP for \(name): \(response)")
     }
