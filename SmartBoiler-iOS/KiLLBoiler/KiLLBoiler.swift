@@ -19,7 +19,7 @@ final class KiLLBoiler: Identifiable {
     }
 
     var currentTemperature: Double
-    var targetTemperature: Double
+    var targetTemperature: Int
     var lastConnection: Date
 
     @Attribute(.ephemeral) var localIP: String?
@@ -69,13 +69,6 @@ final class KiLLBoiler: Identifiable {
 
     @MainActor
     func updateStatus() async {
-        struct ServerResponse: Decodable {
-            let targetTemperature: Double?
-            let currentTemperature: Double?
-            let isOn: Int?
-            let localIP: String?
-        }
-
         let urlString = localIP == nil ? hostname : "http://\(localIP!)"
 
         guard let response: ServerResponse = await postRequest(to: "\(urlString)/status") else {
@@ -121,8 +114,8 @@ final class KiLLBoiler: Identifiable {
         request.httpBody = try? JSONEncoder().encode(["appId": appId, "espId": id])
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 10
-        config.timeoutIntervalForResource = 10
+        config.timeoutIntervalForRequest = 7
+        config.timeoutIntervalForResource = 7
         let session = URLSession(configuration: config)
 
         do {

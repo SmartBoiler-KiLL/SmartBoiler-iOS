@@ -18,17 +18,20 @@ struct BoilerView: View {
 
     @State var isEnabled = false
     @State var hasGoneToSettings = false
+    @State var showingConnectedProgress = false
 
     var body: some View {
         VStack {
             if boiler.status == .disconnected && boiler.failedAttempts >= 5 {
                 errorView
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             titleView
 
             sliderView
         }
+        .animation(.bouncy, value: boiler.failedAttempts)
         .padding()
         .mainBackgroundGradient(alignment: .topLeading)
         .toolbar(.hidden)
@@ -65,15 +68,24 @@ struct BoilerView: View {
                     }
                 } else {
                     boiler.localIP = "192.168.39.12"
+                    showingConnectedProgress = true
                 }
             }
             .buttonStyle(.borderedProminent)
+
+            if showingConnectedProgress {
+                ProgressView()
+                    .tint(.white)
+            }
         }
         .padding(.vertical, 5)
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity, alignment: .center)
         .background(LinearGradient(colors: [.secondaryKiLL, .secondary.opacity(0.3)], startPoint: .top, endPoint: .bottom))
         .clipShape(.rect(cornerRadius: 10))
+        .onDisappear {
+            showingConnectedProgress = false
+        }
     }
 
     var sliderView: some View {
@@ -89,7 +101,7 @@ struct BoilerView: View {
                 .padding(.vertical, 55)
                 .sensoryFeedback(.increase, trigger: isEnabled)
 
-                Text("\(boiler.targetTemperature, format: .number.precision(.fractionLength(1)))°C")
+                Text("\(boiler.targetTemperature)°C")
                     .font(.system(size: 85, weight: .heavy))
                     .lineLimit(1)
                     .minimumScaleFactor(0.00001)
@@ -117,11 +129,7 @@ struct BoilerView: View {
 
             Spacer()
 
-            TemperatureSlider(targetTemperature: .init(get: {
-                Int(boiler.targetTemperature)
-            }, set: {
-                boiler.targetTemperature = Double($0)
-            }), isEnabled: isEnabled)
+            TemperatureSlider(targetTemperature: $boiler.targetTemperature, isEnabled: isEnabled)
             .sensoryFeedback(.increase, trigger: boiler.targetTemperature)
             .offset(x: 20)
         }
