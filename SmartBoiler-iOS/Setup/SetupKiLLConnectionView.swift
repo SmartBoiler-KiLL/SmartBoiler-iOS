@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SetupKiLLConnectionView: View {
 
-    @Environment(LocalNetworkManager.self) var localNetworkManager
+    @Environment(LocalNetworkSetupManager.self) var localNetworkManager
 
     let maximumAttempts = 10
 
@@ -99,7 +99,7 @@ struct SetupKiLLConnectionView: View {
 
 #Preview {
     struct SetupKiLLConnectionView_Previews: View {
-        @State var localNetworkManager = LocalNetworkManager()
+        @State var localNetworkManager = LocalNetworkSetupManager()
         var body: some View {
             SetupKiLLConnectionView()
                 .environment(localNetworkManager)

@@ -15,7 +15,7 @@ struct SetupView: View {
 
     let isFirstSetup: Bool
 
-    @State var localNetworkManager = LocalNetworkManager()
+    @State var localNetworkManager = LocalNetworkSetupManager()
     @State var locationManager = LocationManager()
 
     @State var wifiSSID = "INFINITUM0453_2.4"

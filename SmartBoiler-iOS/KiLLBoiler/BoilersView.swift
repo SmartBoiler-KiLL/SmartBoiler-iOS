@@ -14,21 +14,24 @@ struct BoilersView: View {
 
     var boilers: [KiLLBoiler]
 
+    var boilerList: [KiLLBoiler] {
+        boilers.filter { filter.isReallyEmpty || $0.name.localizedCaseInsensitiveContains(filter) }
+    }
+
     @State var showAddBoiler = false
+    @State var filter = ""
 
     var body: some View {
-        List(boilers) { boiler in
-            Text("\(boiler.id) \(boiler.name)")
-                .contextMenu {
-                    Button("Delete", systemImage: "trash", role: .destructive) {
-                        modelContext.delete(boiler)
-                        try? modelContext.save()
-                    }
-                }
+        List(boilerList) { boiler in
+            BoilerRow(boiler: boiler)
+                .listRowBackground(Color.clear)
         }
+        .listStyle(.plain)
+        .padding(.top, 5)
         .scrollContentBackground(.hidden)
         .mainBackgroundGradient()
-        .navigationTitle("Boilers")
+        .navigationTitle("KiLLs")
+        .searchable(text: $filter, prompt: "Search")
         .toolbar {
             Button("Add KiLL", systemImage: "gauge.with.dots.needle.bottom.50percent.badge.plus") {
                 showAddBoiler.toggle()

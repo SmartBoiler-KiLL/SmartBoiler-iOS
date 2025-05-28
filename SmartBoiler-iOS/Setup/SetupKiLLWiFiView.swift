@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SetupKiLLWiFiView: View {
 
-    @Environment(LocalNetworkManager.self) var localNetworkManager
+    @Environment(LocalNetworkSetupManager.self) var localNetworkManager
 
     @AppStorage("AppID") var appId = ""
 
