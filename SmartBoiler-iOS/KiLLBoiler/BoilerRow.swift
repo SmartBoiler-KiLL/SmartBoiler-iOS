@@ -19,6 +19,7 @@ struct BoilerRow: View {
 
     @State var isMainViewActive = false
     @State var sendingRequest = false
+    @State var updateTask: Task<Void, Never>? = nil
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -38,7 +39,7 @@ struct BoilerRow: View {
                 Spacer()
 
 
-                if boiler.status == .disconnected || sendingRequest {
+                if boiler.status == .disconnected || sendingRequest || boiler.failedAttempts >= 2 {
                     ProgressView()
                         .tint(.white)
                 }
@@ -49,7 +50,7 @@ struct BoilerRow: View {
                 }
 
                 Button("", systemImage: boiler.status.systemImage) {
-                    
+                    sendingRequest = true
                 }
                 .font(.title2.bold())
                 .foregroundStyle(boiler.status == .disconnected ? .red : .white)
@@ -64,7 +65,7 @@ struct BoilerRow: View {
             isMainViewActive = true
         }
         .navigationDestination(isPresented: $isMainViewActive) {
-            BoilerView(boiler: boiler)
+            BoilerView(boiler: boiler, sendingRequest: $sendingRequest, updateTask: $updateTask)
         }
         .task {
             keepBoilerUpdated()
@@ -74,14 +75,28 @@ struct BoilerRow: View {
                 keepBoilerUpdated()
             }
         }
+        .onChange(of: sendingRequest) {
+            if sendingRequest {
+                updateTask?.cancel()
+            } else {
+                keepBoilerUpdated()
+            }
+        }
     }
 
     func keepBoilerUpdated() {
-        Task {
-            repeat {
+        updateTask?.cancel()
+
+        updateTask = Task {
+            while !Task.isCancelled {
+                if sendingRequest {
+                    print("Request in progress — cancelling current update loop")
+                    break
+                }
+
                 await boiler.updateStatus()
                 try? await Task.sleep(for: .milliseconds(500))
-            } while true
+            }
         }
     }
 }

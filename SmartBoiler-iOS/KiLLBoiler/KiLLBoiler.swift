@@ -23,9 +23,15 @@ final class KiLLBoiler: Identifiable {
     var lastConnection: Date
 
     @Attribute(.ephemeral) var localIP: String?
+    @Attribute(.ephemeral) var status: Status = Status.disconnected
+
+    var failedAttempts = 0
 
     private var latitude: Double
     private var longitude: Double
+
+    static let minimumTemperature = 23
+    static let maximumTemperature = 50
 
     var location: CLLocationCoordinate2D? {
         latitude != 0 || longitude != 0 ? CLLocationCoordinate2D(latitude: latitude, longitude: longitude) : nil
@@ -40,8 +46,6 @@ final class KiLLBoiler: Identifiable {
         self.latitude = location?.latitude ?? 0
         self.longitude = location?.longitude ?? 0
     }
-
-    @Attribute(.ephemeral) var status: Status = Status.disconnected
 
     enum Status: Int, Codable {
         case disconnected
@@ -64,16 +68,6 @@ final class KiLLBoiler: Identifiable {
     }
 
     @MainActor
-    func getLocalIP() async {
-        guard let response: String = await postRequest(to: "\(hostname)/local_ip") else {
-            self.status = .disconnected
-            return
-        }
-        self.localIP = response
-        print("Local IP for \(name): \(response)")
-    }
-
-    @MainActor
     func updateStatus() async {
         struct ServerResponse: Decodable {
             let targetTemperature: Double?
@@ -85,7 +79,10 @@ final class KiLLBoiler: Identifiable {
         let urlString = localIP == nil ? hostname : "http://\(localIP!)"
 
         guard let response: ServerResponse = await postRequest(to: "\(urlString)/status") else {
-            status = .disconnected
+            await MainActor.run {
+                status = .disconnected
+                failedAttempts += 1
+            }
             return
         }
 
@@ -93,14 +90,19 @@ final class KiLLBoiler: Identifiable {
            let current = response.currentTemperature,
            let isOn = response.isOn,
            let localIP = response.localIP {
-            self.targetTemperature = target
-            self.currentTemperature = current
-            self.status = isOn == 1 ? .turnedOn : .turnedOff
-            self.lastConnection = .now
-            self.localIP = localIP
+            await MainActor.run {
+                self.targetTemperature = target
+                self.currentTemperature = current
+                self.status = isOn == 1 ? .turnedOn : .turnedOff
+                self.lastConnection = .now
+                self.localIP = localIP
+                self.failedAttempts = 0
+            }
         } else {
             print("Invalid response from server for \(name)")
-            status = .disconnected
+            await MainActor.run {
+                status = .disconnected
+            }
         }
     }
 
@@ -119,8 +121,8 @@ final class KiLLBoiler: Identifiable {
         request.httpBody = try? JSONEncoder().encode(["appId": appId, "espId": id])
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15
-        config.timeoutIntervalForResource = 15
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
         let session = URLSession(configuration: config)
 
         do {

@@ -13,9 +13,9 @@ struct TemperatureSlider: View {
     
     @Binding var targetTemperature: Int
     var isEnabled: Bool
-    let minimumTemperature: Int
-    let maxTemperature: Int = 50
-    
+    let minimumTemperature = KiLLBoiler.minimumTemperature
+    let maxTemperature = KiLLBoiler.maximumTemperature
+
     let curveWidth: CGFloat = -30
     let curveHeight: CGFloat = 75
     
@@ -156,5 +156,6 @@ struct TemperatureSlider: View {
 }
 
 #Preview {
-    BoilerView(boiler: KiLLBoiler(id: "1", name: "Preview Boiler", location: nil))
+    BoilerView(boiler: KiLLBoiler(id: "1", name: "Preview Boiler", location: nil), sendingRequest: .constant(false), updateTask: .constant(nil))
+        .colorScheme(.dark)
 }
