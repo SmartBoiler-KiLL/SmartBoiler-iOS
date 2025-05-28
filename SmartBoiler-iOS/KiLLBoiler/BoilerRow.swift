@@ -12,22 +12,21 @@ struct BoilerRow: View {
 
     @Bindable var boiler: KiLLBoiler
 
-    var location: MKCoordinateRegion? {
-        guard let location = boiler.location else { return nil }
-        return MKCoordinateRegion(center: location, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
-    }
+    @State var viewModel: BoilerViewModel
 
-    @State var sendingRequest = false
+    init(boiler: KiLLBoiler) {
+        self.boiler = boiler
+        self.viewModel = BoilerViewModel(boiler: boiler)
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if let location {
-                Map(initialPosition: MapCameraPosition.region(location), interactionModes: []) {
-                    Marker("KiLL", coordinate: location.center)
+            if let region = viewModel.region {
+                Map(initialPosition: MapCameraPosition.region(region), interactionModes: []) {
+                    Marker(boiler.name, coordinate: region.center)
                 }
                 .frame(height: 200)
                 .frame(maxWidth: .infinity)
-                .allowsHitTesting(false)
             }
 
             HStack {
@@ -38,7 +37,7 @@ struct BoilerRow: View {
                 Spacer()
 
 
-                if boiler.status == .disconnected || sendingRequest {
+                if boiler.status == .disconnected || viewModel.sendingRequest || boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowLoading {
                     ProgressView()
                         .tint(.white)
                 }
@@ -48,28 +47,37 @@ struct BoilerRow: View {
                         .font(.system(size: 28, weight: .bold))
                 }
 
-                Button("", systemImage: boiler.status.systemImage) {
-
-                }
-                .font(.title2.bold())
-                .foregroundStyle(boiler.status == .disconnected ? .red : .white)
-                .animation(.bouncy, value: boiler.status)
+                Image(systemName: boiler.status.systemImage)
+                    .font(.title.bold())
+                    .foregroundStyle(boiler.status == .disconnected ? .red : .white)
+                    .animation(.bouncy, value: boiler.status)
+                    .onTapGesture(perform: viewModel.toggleBoiler)
+                    .padding(.trailing, 5)
             }
             .foregroundStyle(.white)
             .font(.system(size: 28, weight: .bold))
             .background(LinearGradient(colors: [.darkKiLLGray, .darkKiLLGray.opacity(0.2)], startPoint: .bottom, endPoint: .top))
         }
         .clipShape(.rect(cornerRadius: 12))
+        .onTapGesture {
+            viewModel.isMainViewActive = true
+        }
+        .navigationDestination(isPresented: $viewModel.isMainViewActive) {
+            BoilerDetailView(viewModel: viewModel)
+        }
         .task {
-            while true {
-                if !sendingRequest {
-                    if boiler.localIP == nil {
-                        await boiler.getLocalIP()
-                    } else {
-                        await boiler.updateStatus()
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(500))
+            viewModel.keepBoilerUpdated()
+        }
+        .onChange(of: viewModel.isMainViewActive) {
+            if !viewModel.isMainViewActive {
+                viewModel.keepBoilerUpdated()
+            }
+        }
+        .onChange(of: viewModel.sendingRequest) {
+            if viewModel.sendingRequest {
+                viewModel.updateTask?.cancel()
+            } else {
+                viewModel.keepBoilerUpdated()
             }
         }
     }

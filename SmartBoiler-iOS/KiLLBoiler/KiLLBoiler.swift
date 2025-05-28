@@ -19,13 +19,22 @@ final class KiLLBoiler: Identifiable {
     }
 
     var currentTemperature: Double
-    var targetTemperature: Double
+    var targetTemperature: Int
     var lastConnection: Date
 
     @Attribute(.ephemeral) var localIP: String?
+    @Attribute(.ephemeral) var status: Status = Status.disconnected
+    @Attribute(.ephemeral) var failedAttempts = 2 // Start with 2 to show loading state initially
+    @Attribute(.ephemeral) var networkSelection: NetworkSelection? = NetworkSelection.kill
 
     private var latitude: Double
     private var longitude: Double
+
+    static let failedAttemptsToShowLoading = 2
+    static let failedAttemptsToShowDisconnected = 5
+    static let minimumTemperature = 23
+    static let maximumTemperature = 50
+    static let localNetworkIP = "192.168.39.12"
 
     var location: CLLocationCoordinate2D? {
         latitude != 0 || longitude != 0 ? CLLocationCoordinate2D(latitude: latitude, longitude: longitude) : nil
@@ -40,8 +49,6 @@ final class KiLLBoiler: Identifiable {
         self.latitude = location?.latitude ?? 0
         self.longitude = location?.longitude ?? 0
     }
-
-    @Attribute(.ephemeral) var status: Status = Status.disconnected
 
     enum Status: Int, Codable {
         case disconnected
@@ -63,72 +70,149 @@ final class KiLLBoiler: Identifiable {
         }
     }
 
-    @MainActor
-    func getLocalIP() async {
-        guard let response: String = await postRequest(to: "\(hostname)/local_ip") else {
-            self.status = .disconnected
-            return
-        }
-        self.localIP = response
-        print("Local IP for \(name): \(response)")
+    enum NetworkSelection: Int8, Codable {
+        case kill
+        case wifi
     }
 
     @MainActor
-    func updateStatus() async {
-        guard let localIP else { return }
-        struct ServerResponse: Decodable {
-            let targetTemperature: Double?
-            let currentTemperature: Double?
-            let isOn: Int?
-        }
-
-        guard let response: ServerResponse = await postRequest(to: "http://\(localIP)/status") else {
-            status = .disconnected
+    func updateStatus(sendingRequest: Bool) async {
+        guard let response: ServerResponse = await postRequest(to: "status") else {
+            print("Failed to fetch status for \(name)")
+            await MainActor.run {
+                if failedAttempts >= Self.failedAttemptsToShowDisconnected {
+                    status = .disconnected
+                }
+                failedAttempts += 1
+            }
             return
         }
 
         if let target = response.targetTemperature,
            let current = response.currentTemperature,
-           let isOn = response.isOn {
-            self.targetTemperature = target
-            self.currentTemperature = current
-            self.status = isOn == 1 ? .turnedOn : .turnedOff
-            self.lastConnection = .now
+           let isOn = response.isOn,
+           let localIP = response.localIP {
+            await MainActor.run {
+                if sendingRequest { return } // Ignore updates while sending requests
+                if target >= Self.minimumTemperature && target <= Self.maximumTemperature {
+                    self.targetTemperature = target
+                }
+                self.currentTemperature = current
+                self.status = isOn == 1 ? .turnedOn : .turnedOff
+                self.lastConnection = .now
+                self.localIP = localIP
+                self.networkSelection = localIP == Self.localNetworkIP ? .kill : .wifi
+                self.failedAttempts = 0
+            }
         } else {
             print("Invalid response from server for \(name)")
-            status = .disconnected
+            await MainActor.run {
+                if failedAttempts >= Self.failedAttemptsToShowDisconnected {
+                    status = .disconnected
+                }
+            }
         }
+    }
+
+    @MainActor func toggleBoiler() async {
+        guard status != .disconnected else { return }
+
+        let command = KiLLCommand(command: status == .turnedOn ? "turn_off" : "turn_on", value: 0)
+        guard let response: SimpleServerResponse = await postRequest(to: "command", with: command) else {
+            print("Failed to toggle boiler for \(name)")
+            return
+        }
+
+        if let status = response.status {
+            print("Operation status for \(name): \(status)")
+            await MainActor.run {
+                self.status = self.status == .turnedOn ? .turnedOff : .turnedOn
+            }
+        } else if let error = response.error {
+            print("Error toggling boiler for \(name): \(error)")
+        } else {
+            print("Unexpected response from server for \(name): \(response)")
+        }
+    }
+
+    @MainActor func setTargetTemperature() async {
+        print("Setting target temperature for \(name): \(targetTemperature)°C")
+        let command = KiLLCommand(command: "set_temperature", value: targetTemperature)
+
+        guard let response: SimpleServerResponse = await postRequest(to: "command", with: command) else {
+            print("Failed to set target temperature for \(name)")
+            return
+        }
+
+        if let status = response.status, status == "OK" {
+            print("Target temperature set successfully for \(name)")
+        } else if let error = response.error {
+            print("Error setting target temperature for \(name): \(error)")
+        } else {
+            print("Unexpected response from server for \(name): \(response)")
+        }
+    }
+
+    @MainActor func resetKiLL() async -> Bool {
+        guard let response: SimpleServerResponse = await postRequest(to: "kill_reset_factory") else {
+            print("Failed to reset KiLL for \(name)")
+            return false
+        }
+
+        return response.status == "OK"
     }
 
     // MARK: - Shared POST Request Helper
 
-    private func postRequest<T: Decodable>(to endpoint: String) async -> T? {
-        guard let url = URL(string: endpoint) else { return nil }
+    private func postRequest<T: Decodable, R: Encodable>(to endpoint: String, with data: R = EmptyEncodable()) async -> T? {
+        let urlString = (localIP == nil ? hostname : "http://\(localIP!)") + "/\(endpoint)"
+        guard let url = URL(string: urlString) else { return nil }
+
         guard let appId = UserDefaults.standard.string(forKey: "AppID") else {
             print("AppID not found")
+            return nil
+        }
+
+        // Start with appId and espId
+        var fullDict: [String: Any] = [
+            "appId": appId,
+            "espId": id
+        ]
+
+        // If data exists, merge its keys into the dictionary
+        if type(of: data) != EmptyEncodable.self,
+           let encodedData = try? JSONEncoder().encode(data),
+           let rawDict = try? JSONSerialization.jsonObject(with: encodedData) as? [String: Any] {
+            for (key, value) in rawDict {
+                fullDict[key] = value
+            }
+        }
+
+        // Convert fullDict back to JSON for the request body
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: fullDict) else {
+            print("Failed to encode request body")
             return nil
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["appId": appId, "espId": id])
+        request.httpBody = bodyData
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15
-        config.timeoutIntervalForResource = 15
+        config.timeoutIntervalForRequest = 7
+        config.timeoutIntervalForResource = 7
         let session = URLSession(configuration: config)
 
         do {
             let (data, _) = try await session.data(for: request)
-            // If T is String, decode manually
             if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
                 return string
             } else {
                 return try JSONDecoder().decode(T.self, from: data)
             }
         } catch {
-            print("POST to \(endpoint) failed: \(error.localizedDescription)")
+            print("POST to \(urlString) failed: \(error.localizedDescription)")
             return nil
         }
     }
