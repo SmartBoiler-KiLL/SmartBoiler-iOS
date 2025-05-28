@@ -25,7 +25,7 @@ struct BoilerRow: View {
         ZStack(alignment: .bottom) {
             if let location {
                 Map(initialPosition: MapCameraPosition.region(location), interactionModes: []) {
-                    Marker("KiLL", coordinate: location.center)
+                    Marker(boiler.name, coordinate: location.center)
                 }
                 .frame(height: 200)
                 .frame(maxWidth: .infinity)
@@ -49,13 +49,12 @@ struct BoilerRow: View {
                         .font(.system(size: 28, weight: .bold))
                 }
 
-                Button("", systemImage: boiler.status.systemImage) {
-                    sendingRequest = true
-
-                }
-                .font(.title2.bold())
-                .foregroundStyle(boiler.status == .disconnected ? .red : .white)
-                .animation(.bouncy, value: boiler.status)
+                Image(systemName: boiler.status.systemImage)
+                    .font(.title.bold())
+                    .foregroundStyle(boiler.status == .disconnected ? .red : .white)
+                    .animation(.bouncy, value: boiler.status)
+                    .onTapGesture(perform: toggleBoiler)
+                    .padding(.trailing, 5)
             }
             .foregroundStyle(.white)
             .font(.system(size: 28, weight: .bold))
@@ -66,7 +65,7 @@ struct BoilerRow: View {
             isMainViewActive = true
         }
         .navigationDestination(isPresented: $isMainViewActive) {
-            BoilerView(boiler: boiler, sendingRequest: $sendingRequest, updateTask: $updateTask)
+            BoilerView(boiler: boiler, sendingRequest: $sendingRequest, updateTask: $updateTask, toggleBoiler: toggleBoiler)
         }
         .task {
             keepBoilerUpdated()
@@ -98,6 +97,15 @@ struct BoilerRow: View {
                 await boiler.updateStatus(sendingRequest: sendingRequest)
                 try? await Task.sleep(for: .milliseconds(500))
             }
+        }
+    }
+
+    func toggleBoiler() {
+        if boiler.status == .disconnected || sendingRequest { return }
+        Task {
+            sendingRequest = true
+            await boiler.toggleBoiler()
+            sendingRequest = false
         }
     }
 }

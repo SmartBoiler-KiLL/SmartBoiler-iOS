@@ -15,8 +15,8 @@ struct BoilerView: View {
     @Bindable var boiler: KiLLBoiler
     @Binding var sendingRequest: Bool
     @Binding var updateTask: Task<Void, Never>?
+    let toggleBoiler: () -> Void
 
-    @State var isEnabled = false
     @State var hasGoneToSettings = false
     @State var showingConnectedProgress = false
 
@@ -35,11 +35,6 @@ struct BoilerView: View {
         .padding()
         .mainBackgroundGradient(alignment: .topLeading)
         .toolbar(.hidden)
-        .onChange(of: boiler.failedAttempts) {
-            if boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowDisconnected {
-                isEnabled = false
-            }
-        }
     }
 
     var titleView: some View {
@@ -97,15 +92,29 @@ struct BoilerView: View {
     var sliderView: some View {
         HStack {
             VStack(alignment: .leading) {
-                Button("Turn \(isEnabled ? "Off" : "On")", systemImage: isEnabled ? "power.circle.fill" : "power.circle") {
-                    isEnabled.toggle()
+                Button(
+                    "Turn \(boiler.status == .turnedOn ? "Off" : "On")",
+                    systemImage: boiler.status == .turnedOn ? "power.circle.fill" : "power.circle"
+                ) {
+                    toggleBoiler()
                 }
                 .labelStyle(.iconOnly)
                 .font(.system(size: 85))
                 .foregroundStyle(.white)
+                .overlay {
+                    if sendingRequest {
+                        ProgressView()
+                            .dynamicTypeSize(.xLarge)
+                            .tint(.secondaryKiLL)
+                            .padding()
+                            .background(boiler.status == .turnedOn ? .white : .darkKiLLGray)
+                            .clipShape(.circle)
+                    }
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 55)
-                .sensoryFeedback(.increase, trigger: isEnabled)
+                .sensoryFeedback(.increase, trigger: boiler.status)
+                .animation(.bouncy, value: sendingRequest)
 
                 Text("\(boiler.targetTemperature)°C")
                     .font(.system(size: 85, weight: .heavy))
@@ -135,7 +144,7 @@ struct BoilerView: View {
 
             Spacer()
 
-            TemperatureSlider(targetTemperature: $boiler.targetTemperature, isEnabled: isEnabled)
+            TemperatureSlider(targetTemperature: $boiler.targetTemperature, isEnabled: boiler.status == .turnedOn)
             .sensoryFeedback(.increase, trigger: boiler.targetTemperature)
             .offset(x: 20)
         }
@@ -143,6 +152,6 @@ struct BoilerView: View {
 }
 
 #Preview {
-    BoilerView(boiler: KiLLBoiler(id: "1", name: "Preview Boiler", location: nil), sendingRequest: .constant(false), updateTask: .constant(nil))
+    BoilerView(boiler: KiLLBoiler(id: "1", name: "Preview Boiler", location: nil), sendingRequest: .constant(false), updateTask: .constant(nil), toggleBoiler: {})
         .colorScheme(.dark)
 }

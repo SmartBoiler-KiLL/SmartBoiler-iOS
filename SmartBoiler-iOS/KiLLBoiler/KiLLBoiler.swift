@@ -24,8 +24,7 @@ final class KiLLBoiler: Identifiable {
 
     @Attribute(.ephemeral) var localIP: String?
     @Attribute(.ephemeral) var status: Status = Status.disconnected
-
-    var failedAttempts = 0
+    @Attribute(.ephemeral) var failedAttempts = 2 // Start with 2 to show loading state initially
 
     private var latitude: Double
     private var longitude: Double
@@ -115,6 +114,9 @@ final class KiLLBoiler: Identifiable {
 
         if let status = response.status {
             print("Operation status for \(name): \(status)")
+            await MainActor.run {
+                self.status = self.status == .turnedOn ? .turnedOff : .turnedOn
+            }
         } else if let error = response.error {
             print("Error toggling boiler for \(name): \(error)")
         } else {
