@@ -35,6 +35,11 @@ struct BoilerView: View {
         .padding()
         .mainBackgroundGradient(alignment: .topLeading)
         .toolbar(.hidden)
+        .onChange(of: boiler.failedAttempts) {
+            if boiler.failedAttempts >= 5 {
+                isEnabled = false
+            }
+        }
     }
 
     var titleView: some View {
@@ -69,6 +74,7 @@ struct BoilerView: View {
                 } else {
                     boiler.localIP = "192.168.39.12"
                     showingConnectedProgress = true
+                    hasGoneToSettings = false
                 }
             }
             .buttonStyle(.borderedProminent)
