@@ -132,6 +132,15 @@ final class KiLLBoiler: Identifiable {
         }
     }
 
+    @MainActor func resetKiLL() async -> Bool {
+        guard let response: SimpleServerResponse = await postRequest(to: "kill_reset_factory") else {
+            print("Failed to reset KiLL for \(name)")
+            return false
+        }
+
+        return response.status == "OK"
+    }
+
     // MARK: - Shared POST Request Helper
 
     private func postRequest<T: Decodable, R: Encodable>(to endpoint: String, with data: R = EmptyEncodable()) async -> T? {
