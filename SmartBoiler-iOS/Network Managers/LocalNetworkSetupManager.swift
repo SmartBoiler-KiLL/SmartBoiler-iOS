@@ -8,7 +8,7 @@
 import SwiftUI
 
 @Observable class LocalNetworkSetupManager {
-    private let ipAddress = "192.168.39.12"
+    private let ipAddress = KiLLBoiler.localNetworkIP
 
     var mDNSAddress = ""
     var isUsingmDNS = false

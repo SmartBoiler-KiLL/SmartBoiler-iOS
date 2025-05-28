@@ -156,8 +156,3 @@ struct TemperatureSlider: View {
         return width * (1 - pow(normalized, 2))
     }
 }
-
-#Preview {
-    BoilerView(boiler: KiLLBoiler(id: "1", name: "Preview Boiler", location: nil), sendingRequest: .constant(false), updateTask: .constant(nil), toggleBoiler: {})
-        .colorScheme(.dark)
-}

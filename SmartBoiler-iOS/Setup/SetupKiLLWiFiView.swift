@@ -34,10 +34,12 @@ struct SetupKiLLWiFiView: View {
             TextField("WiFi Network Name", text: $wifiSSID)
                 .textFieldStyle(.roundedBorder)
                 .colorScheme(.light)
+                .autocorrectionDisabled()
 
             TextField("WiFi Password", text: $wifiPassword)
                 .textFieldStyle(.roundedBorder)
                 .colorScheme(.light)
+                .autocorrectionDisabled()
 
             Button("Send Credentials", action: sendCredentials)
                 .buttonStyle(.borderedProminent)

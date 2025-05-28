@@ -12,20 +12,18 @@ struct BoilerRow: View {
 
     @Bindable var boiler: KiLLBoiler
 
-    var location: MKCoordinateRegion? {
-        guard let location = boiler.location else { return nil }
-        return MKCoordinateRegion(center: location, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
-    }
+    @State var viewModel: BoilerViewModel
 
-    @State var isMainViewActive = false
-    @State var sendingRequest = false
-    @State var updateTask: Task<Void, Never>? = nil
+    init(boiler: KiLLBoiler) {
+        self.boiler = boiler
+        self.viewModel = BoilerViewModel(boiler: boiler)
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if let location {
-                Map(initialPosition: MapCameraPosition.region(location), interactionModes: []) {
-                    Marker(boiler.name, coordinate: location.center)
+            if let region = viewModel.region {
+                Map(initialPosition: MapCameraPosition.region(region), interactionModes: []) {
+                    Marker(boiler.name, coordinate: region.center)
                 }
                 .frame(height: 200)
                 .frame(maxWidth: .infinity)
@@ -39,7 +37,7 @@ struct BoilerRow: View {
                 Spacer()
 
 
-                if boiler.status == .disconnected || sendingRequest || boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowLoading {
+                if boiler.status == .disconnected || viewModel.sendingRequest || boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowLoading {
                     ProgressView()
                         .tint(.white)
                 }
@@ -53,7 +51,7 @@ struct BoilerRow: View {
                     .font(.title.bold())
                     .foregroundStyle(boiler.status == .disconnected ? .red : .white)
                     .animation(.bouncy, value: boiler.status)
-                    .onTapGesture(perform: toggleBoiler)
+                    .onTapGesture(perform: viewModel.toggleBoiler)
                     .padding(.trailing, 5)
             }
             .foregroundStyle(.white)
@@ -62,50 +60,25 @@ struct BoilerRow: View {
         }
         .clipShape(.rect(cornerRadius: 12))
         .onTapGesture {
-            isMainViewActive = true
+            viewModel.isMainViewActive = true
         }
-        .navigationDestination(isPresented: $isMainViewActive) {
-            BoilerView(boiler: boiler, sendingRequest: $sendingRequest, updateTask: $updateTask, toggleBoiler: toggleBoiler)
+        .navigationDestination(isPresented: $viewModel.isMainViewActive) {
+            BoilerDetailView(viewModel: viewModel)
         }
         .task {
-            keepBoilerUpdated()
+            viewModel.keepBoilerUpdated()
         }
-        .onChange(of: isMainViewActive) {
-            if !isMainViewActive {
-                keepBoilerUpdated()
+        .onChange(of: viewModel.isMainViewActive) {
+            if !viewModel.isMainViewActive {
+                viewModel.keepBoilerUpdated()
             }
         }
-        .onChange(of: sendingRequest) {
-            if sendingRequest {
-                updateTask?.cancel()
+        .onChange(of: viewModel.sendingRequest) {
+            if viewModel.sendingRequest {
+                viewModel.updateTask?.cancel()
             } else {
-                keepBoilerUpdated()
+                viewModel.keepBoilerUpdated()
             }
-        }
-    }
-
-    func keepBoilerUpdated() {
-        updateTask?.cancel()
-
-        updateTask = Task {
-            while !Task.isCancelled {
-                if sendingRequest {
-                    print("Request in progress — cancelling current update loop")
-                    break
-                }
-
-                await boiler.updateStatus(sendingRequest: sendingRequest)
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-        }
-    }
-
-    func toggleBoiler() {
-        if boiler.status == .disconnected || sendingRequest { return }
-        Task {
-            sendingRequest = true
-            await boiler.toggleBoiler()
-            sendingRequest = false
         }
     }
 }

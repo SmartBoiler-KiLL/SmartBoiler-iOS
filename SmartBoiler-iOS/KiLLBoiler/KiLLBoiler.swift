@@ -25,6 +25,7 @@ final class KiLLBoiler: Identifiable {
     @Attribute(.ephemeral) var localIP: String?
     @Attribute(.ephemeral) var status: Status = Status.disconnected
     @Attribute(.ephemeral) var failedAttempts = 2 // Start with 2 to show loading state initially
+    @Attribute(.ephemeral) var networkSelection: NetworkSelection? = NetworkSelection.kill
 
     private var latitude: Double
     private var longitude: Double
@@ -33,6 +34,7 @@ final class KiLLBoiler: Identifiable {
     static let failedAttemptsToShowDisconnected = 5
     static let minimumTemperature = 23
     static let maximumTemperature = 50
+    static let localNetworkIP = "192.168.39.12"
 
     var location: CLLocationCoordinate2D? {
         latitude != 0 || longitude != 0 ? CLLocationCoordinate2D(latitude: latitude, longitude: longitude) : nil
@@ -68,6 +70,11 @@ final class KiLLBoiler: Identifiable {
         }
     }
 
+    enum NetworkSelection: Int8, Codable {
+        case kill
+        case wifi
+    }
+
     @MainActor
     func updateStatus(sendingRequest: Bool) async {
         guard let response: ServerResponse = await postRequest(to: "status") else {
@@ -91,6 +98,7 @@ final class KiLLBoiler: Identifiable {
                 self.status = isOn == 1 ? .turnedOn : .turnedOff
                 self.lastConnection = .now
                 self.localIP = localIP
+                self.networkSelection = localIP == Self.localNetworkIP ? .kill : .wifi
                 self.failedAttempts = 0
             }
         } else {
