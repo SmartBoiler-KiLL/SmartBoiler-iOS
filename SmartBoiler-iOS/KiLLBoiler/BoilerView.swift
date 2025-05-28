@@ -22,7 +22,7 @@ struct BoilerView: View {
 
     var body: some View {
         VStack {
-            if boiler.status == .disconnected && boiler.failedAttempts >= 5 {
+            if boiler.status == .disconnected && boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowDisconnected {
                 errorView
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
@@ -36,7 +36,7 @@ struct BoilerView: View {
         .mainBackgroundGradient(alignment: .topLeading)
         .toolbar(.hidden)
         .onChange(of: boiler.failedAttempts) {
-            if boiler.failedAttempts >= 5 {
+            if boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowDisconnected {
                 isEnabled = false
             }
         }
@@ -74,7 +74,6 @@ struct BoilerView: View {
                 } else {
                     boiler.localIP = "192.168.39.12"
                     showingConnectedProgress = true
-                    hasGoneToSettings = false
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -91,6 +90,7 @@ struct BoilerView: View {
         .clipShape(.rect(cornerRadius: 10))
         .onDisappear {
             showingConnectedProgress = false
+            hasGoneToSettings = false
         }
     }
 
@@ -125,7 +125,7 @@ struct BoilerView: View {
                         .fontWeight(.heavy)
                         .foregroundStyle(.secondaryKiLL)
 
-                    if boiler.failedAttempts >= 2 {
+                    if boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowLoading {
                         ProgressView()
                             .tint(.secondaryKiLL)
                     }

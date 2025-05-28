@@ -39,7 +39,7 @@ struct BoilerRow: View {
                 Spacer()
 
 
-                if boiler.status == .disconnected || sendingRequest || boiler.failedAttempts >= 2 {
+                if boiler.status == .disconnected || sendingRequest || boiler.failedAttempts >= KiLLBoiler.failedAttemptsToShowLoading {
                     ProgressView()
                         .tint(.white)
                 }
@@ -51,6 +51,7 @@ struct BoilerRow: View {
 
                 Button("", systemImage: boiler.status.systemImage) {
                     sendingRequest = true
+
                 }
                 .font(.title2.bold())
                 .foregroundStyle(boiler.status == .disconnected ? .red : .white)
@@ -94,7 +95,7 @@ struct BoilerRow: View {
                     break
                 }
 
-                await boiler.updateStatus()
+                await boiler.updateStatus(sendingRequest: sendingRequest)
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }

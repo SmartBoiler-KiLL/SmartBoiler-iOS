@@ -1,5 +1,5 @@
 //
-//  Structs.swift
+//  Request Structs.swift
 //  SmartBoiler-iOS
 //
 //  Created by Leonardo Larrañaga on 5/28/25.
@@ -16,3 +16,10 @@ struct KiLLCommand: Encodable {
     let command: String
     let value: Int8
 }
+
+struct SimpleServerResponse: Decodable {
+    let status: String?
+    let error: String?
+}
+
+struct EmptyEncodable: Encodable {}
