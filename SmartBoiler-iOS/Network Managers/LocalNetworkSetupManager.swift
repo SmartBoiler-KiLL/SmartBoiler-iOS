@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-@Observable class LocalNetworkManager {
+@Observable class LocalNetworkSetupManager {
     private let ipAddress = "192.168.39.12"
 
     var mDNSAddress = ""

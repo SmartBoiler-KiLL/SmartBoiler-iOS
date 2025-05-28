@@ -10,7 +10,7 @@ import MapKit
 
 struct SetupNameLocation: View {
     
-    @Environment(LocalNetworkManager.self) var localNetworkManager
+    @Environment(LocalNetworkSetupManager.self) var localNetworkManager
     @Environment(LocationManager.self) var locationManager
 
     @Binding var kiLLName: String
