@@ -10,6 +10,7 @@ struct ServerResponse: Decodable {
     let currentTemperature: Double?
     let isOn: Int?
     let localIP: String?
+    let minimumTemperature: Int?
 }
 
 struct KiLLCommand: Encodable {
@@ -23,3 +24,18 @@ struct SimpleServerResponse: Decodable {
 }
 
 struct EmptyEncodable: Encodable {}
+
+enum RequestError: Error {
+    case invalidURL
+    case missingAppID
+    case encodingError
+    case cancelled
+    case networkError(Error)
+
+    var isCancellation: Bool {
+        if case .cancelled = self {
+            return true
+        }
+        return false
+    }
+}

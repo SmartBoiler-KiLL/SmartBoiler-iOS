@@ -13,7 +13,7 @@ struct TemperatureSlider: View {
 
     @Binding var targetTemperature: Int
     var isEnabled: Bool
-    let minimumTemperature = KiLLBoiler.minimumTemperature
+    var minimumTemperature: Int
     let maxTemperature = KiLLBoiler.maximumTemperature
 
     let curveWidth: CGFloat = -30
