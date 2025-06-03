@@ -66,7 +66,7 @@ struct BoilerDetailSliderView: View {
 
             Spacer()
 
-            TemperatureSlider(targetTemperature: $viewModel.boiler.targetTemperature, isEnabled: viewModel.boilerStatus == .turnedOn)
+            TemperatureSlider(targetTemperature: $viewModel.boiler.targetTemperature, isEnabled: viewModel.boilerStatus == .turnedOn, minimumTemperature: viewModel.boiler.minimumTemperature)
                 .sensoryFeedback(.increase, trigger: viewModel.boilerTargetTemperature)
             .offset(x: 20)
         }

@@ -21,6 +21,7 @@ final class KiLLBoiler: Identifiable {
     var currentTemperature: Double
     var targetTemperature: Int
     var lastConnection: Date
+    var minimumTemperature: Int = 0
 
     @Attribute(.ephemeral) var localIP: String?
     @Attribute(.ephemeral) var status: Status = Status.disconnected
@@ -32,7 +33,6 @@ final class KiLLBoiler: Identifiable {
 
     static let failedAttemptsToShowLoading = 2
     static let failedAttemptsToShowDisconnected = 5
-    static let minimumTemperature = 23
     static let maximumTemperature = 50
     static let localNetworkIP = "192.168.39.12"
 
@@ -77,38 +77,47 @@ final class KiLLBoiler: Identifiable {
 
     @MainActor
     func updateStatus(sendingRequest: Bool) async {
-        guard let response: ServerResponse = await postRequest(to: "status") else {
-            print("Failed to fetch status for \(name)")
-            await MainActor.run {
-                if failedAttempts >= Self.failedAttemptsToShowDisconnected {
-                    status = .disconnected
+        let result = await postRequest(to: "status") as Result<ServerResponse, RequestError>
+        
+        switch result {
+        case .success(let response):
+            if let target = response.targetTemperature,
+               let current = response.currentTemperature,
+               let isOn = response.isOn,
+               let localIP = response.localIP,
+               let minimumTemperature = response.minimumTemperature
+            {
+                await MainActor.run {
+                    if sendingRequest { return } // Ignore updates while sending requests
+                    if target >= self.minimumTemperature && target <= Self.maximumTemperature {
+                        self.targetTemperature = target
+                    }
+                    self.currentTemperature = current
+                    self.status = isOn == 1 ? .turnedOn : .turnedOff
+                    self.lastConnection = .now
+                    self.localIP = localIP
+                    self.networkSelection = localIP == Self.localNetworkIP ? .kill : .wifi
+                    self.failedAttempts = 0
+                    self.minimumTemperature = minimumTemperature
                 }
-                failedAttempts += 1
-            }
-            return
-        }
-
-        if let target = response.targetTemperature,
-           let current = response.currentTemperature,
-           let isOn = response.isOn,
-           let localIP = response.localIP {
-            await MainActor.run {
-                if sendingRequest { return } // Ignore updates while sending requests
-                if target >= Self.minimumTemperature && target <= Self.maximumTemperature {
-                    self.targetTemperature = target
+            } else {
+                print("Invalid response from server for \(name)")
+                await MainActor.run {
+                    if failedAttempts >= Self.failedAttemptsToShowDisconnected {
+                        status = .disconnected
+                    }
+                    failedAttempts += 1
                 }
-                self.currentTemperature = current
-                self.status = isOn == 1 ? .turnedOn : .turnedOff
-                self.lastConnection = .now
-                self.localIP = localIP
-                self.networkSelection = localIP == Self.localNetworkIP ? .kill : .wifi
-                self.failedAttempts = 0
             }
-        } else {
-            print("Invalid response from server for \(name)")
+            
+        case .failure(let error):
             await MainActor.run {
-                if failedAttempts >= Self.failedAttemptsToShowDisconnected {
-                    status = .disconnected
+                if !error.isCancellation {
+                    print("Failed to fetch status for \(name): \(error.localizedDescription)")
+                    if failedAttempts >= Self.failedAttemptsToShowDisconnected {
+                        status = .disconnected
+                    }
+                    failedAttempts += 1
                 }
             }
         }
@@ -118,20 +127,22 @@ final class KiLLBoiler: Identifiable {
         guard status != .disconnected else { return }
 
         let command = KiLLCommand(command: status == .turnedOn ? "turn_off" : "turn_on", value: 0)
-        guard let response: SimpleServerResponse = await postRequest(to: "command", with: command) else {
-            print("Failed to toggle boiler for \(name)")
-            return
-        }
-
-        if let status = response.status {
-            print("Operation status for \(name): \(status)")
-            await MainActor.run {
-                self.status = self.status == .turnedOn ? .turnedOff : .turnedOn
+        let result = await postRequest(to: "command", with: command) as Result<SimpleServerResponse, RequestError>
+        
+        switch result {
+        case .success(let response):
+            if let status = response.status {
+                print("Operation status for \(name): \(status)")
+                await MainActor.run {
+                    self.status = self.status == .turnedOn ? .turnedOff : .turnedOn
+                }
+            } else if let error = response.error {
+                print("Error toggling boiler for \(name): \(error)")
+            } else {
+                print("Unexpected response from server for \(name): \(response)")
             }
-        } else if let error = response.error {
-            print("Error toggling boiler for \(name): \(error)")
-        } else {
-            print("Unexpected response from server for \(name): \(response)")
+        case .failure(let error):
+            print("Failed to toggle boiler for \(name): \(error)")
         }
     }
 
@@ -139,38 +150,45 @@ final class KiLLBoiler: Identifiable {
         print("Setting target temperature for \(name): \(targetTemperature)°C")
         let command = KiLLCommand(command: "set_temperature", value: targetTemperature)
 
-        guard let response: SimpleServerResponse = await postRequest(to: "command", with: command) else {
-            print("Failed to set target temperature for \(name)")
-            return
-        }
-
-        if let status = response.status, status == "OK" {
-            print("Target temperature set successfully for \(name)")
-        } else if let error = response.error {
-            print("Error setting target temperature for \(name): \(error)")
-        } else {
-            print("Unexpected response from server for \(name): \(response)")
+        let result = await postRequest(to: "command", with: command) as Result<SimpleServerResponse, RequestError>
+        
+        switch result {
+        case .success(let response):
+            if let status = response.status, status == "OK" {
+                print("Target temperature set successfully for \(name)")
+            } else if let error = response.error {
+                print("Error setting target temperature for \(name): \(error)")
+            } else {
+                print("Unexpected response from server for \(name): \(response)")
+            }
+        case .failure(let error):
+            print("Failed to set target temperature for \(name): \(error)")
         }
     }
 
     @MainActor func resetKiLL() async -> Bool {
-        guard let response: SimpleServerResponse = await postRequest(to: "kill_reset_factory") else {
-            print("Failed to reset KiLL for \(name)")
+        let result = await postRequest(to: "kill_reset_factory") as Result<SimpleServerResponse, RequestError>
+        
+        switch result {
+        case .success(let response):
+            return response.status == "OK"
+        case .failure(let error):
+            print("Failed to reset KiLL for \(name): \(error)")
             return false
         }
-
-        return response.status == "OK"
     }
 
     // MARK: - Shared POST Request Helper
 
-    private func postRequest<T: Decodable, R: Encodable>(to endpoint: String, with data: R = EmptyEncodable()) async -> T? {
+    private func postRequest<T: Decodable, R: Encodable>(to endpoint: String, with data: R = EmptyEncodable()) async -> Result<T, RequestError> {
         let urlString = (localIP == nil ? hostname : "http://\(localIP!)") + "/\(endpoint)"
-        guard let url = URL(string: urlString) else { return nil }
+        guard let url = URL(string: urlString) else { 
+            return .failure(.invalidURL)
+        }
 
         guard let appId = UserDefaults.standard.string(forKey: "AppID") else {
             print("AppID not found")
-            return nil
+            return .failure(.missingAppID)
         }
 
         // Start with appId and espId
@@ -191,7 +209,7 @@ final class KiLLBoiler: Identifiable {
         // Convert fullDict back to JSON for the request body
         guard let bodyData = try? JSONSerialization.data(withJSONObject: fullDict) else {
             print("Failed to encode request body")
-            return nil
+            return .failure(.encodingError)
         }
 
         var request = URLRequest(url: url)
@@ -207,13 +225,21 @@ final class KiLLBoiler: Identifiable {
         do {
             let (data, _) = try await session.data(for: request)
             if T.self == String.self, let string = String(data: data, encoding: .utf8) as? T {
-                return string
+                return .success(string)
             } else {
-                return try JSONDecoder().decode(T.self, from: data)
+                let decodedData = try JSONDecoder().decode(T.self, from: data)
+                return .success(decodedData)
             }
         } catch {
             print("POST to \(urlString) failed: \(error.localizedDescription)")
-            return nil
+            
+            // Check if the error is due to cancellation
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                return .failure(.cancelled)
+            } else {
+                return .failure(.networkError(error))
+            }
         }
     }
 }
+
