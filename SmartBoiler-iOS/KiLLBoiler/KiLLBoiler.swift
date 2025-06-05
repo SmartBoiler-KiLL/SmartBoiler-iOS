@@ -22,6 +22,7 @@ final class KiLLBoiler: Identifiable {
     var targetTemperature: Int
     var lastConnection: Date
     var minimumTemperature: Int = 0
+    var log = ""
 
     @Attribute(.ephemeral) var localIP: String?
     @Attribute(.ephemeral) var status: Status = Status.disconnected
@@ -33,7 +34,7 @@ final class KiLLBoiler: Identifiable {
 
     static let failedAttemptsToShowLoading = 2
     static let failedAttemptsToShowDisconnected = 5
-    static let maximumTemperature = 50
+    static let maximumTemperature = 65
     static let localNetworkIP = "192.168.39.12"
 
     var location: CLLocationCoordinate2D? {
@@ -89,13 +90,14 @@ final class KiLLBoiler: Identifiable {
             {
                 await MainActor.run {
                     if sendingRequest { return } // Ignore updates while sending requests
+                    print("Status update for \(name): target=\(target), current=\(current), isOn=\(isOn), localIP=\(localIP), minimumTemperature=\(minimumTemperature)")
                     if target >= self.minimumTemperature && target <= Self.maximumTemperature {
-                        self.targetTemperature = target
+//                        self.targetTemperature = target
                     }
                     self.currentTemperature = current
                     self.status = isOn == 1 ? .turnedOn : .turnedOff
                     self.lastConnection = .now
-                    self.localIP = localIP
+//                    self.localIP = localIP
                     self.networkSelection = localIP == Self.localNetworkIP ? .kill : .wifi
                     self.failedAttempts = 0
                     self.minimumTemperature = minimumTemperature
@@ -181,8 +183,8 @@ final class KiLLBoiler: Identifiable {
     // MARK: - Shared POST Request Helper
 
     private func postRequest<T: Decodable, R: Encodable>(to endpoint: String, with data: R = EmptyEncodable()) async -> Result<T, RequestError> {
-        let urlString = (localIP == nil ? hostname : "http://\(localIP!)") + "/\(endpoint)"
-        guard let url = URL(string: urlString) else { 
+        let urlString = "http://192.168.39.12/" + "\(endpoint)"
+        guard let url = URL(string: urlString) else {
             return .failure(.invalidURL)
         }
 

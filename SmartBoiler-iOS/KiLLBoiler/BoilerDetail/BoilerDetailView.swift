@@ -3,7 +3,7 @@
 //  SmartBoiler-iOS
 //
 //  Created by Leonardo Larrañaga on 3/12/25.
-//
+// 56653113
 
 import SwiftUI
 
@@ -35,6 +35,9 @@ struct BoilerDetailView: View {
         .toolbar(.hidden)
         .onChange(of: viewModel.boilerTargetTemperature) {
             viewModel.setTargetTemperature()
+        }
+        .onChange(of: viewModel.boilerCurrentTemperature) {
+            viewModel.boiler.log += "\(viewModel.boilerCurrentTemperature),\(viewModel.boilerTargetTemperature),\(Date.timeIntervalBetween1970AndReferenceDate)\n"
         }
     }
 }

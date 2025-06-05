@@ -35,6 +35,14 @@ struct BoilerDetailSettingsView: View {
                     TextField("Name", text: $viewModel.boiler.name)
                 }
 
+                Button("Clear Log") {
+                    viewModel.boiler.log = ""
+                }
+
+                Button("Copy Log") {
+                    UIPasteboard.general.string = viewModel.boiler.log
+                }
+
                 Button("Delete & Reset KiLL", role: .destructive) {
                     showDeleteAlert.toggle()
                 }
