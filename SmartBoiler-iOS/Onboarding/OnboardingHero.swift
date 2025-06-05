@@ -51,7 +51,8 @@ struct OnboardingHero: View {
                             Image(.boilerHero)
                                 .resizable()
                                 .scaledToFill()
-                                .offset(x: 15)
+                                .scaleEffect(1.1)
+                                .offset(y: 55)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }

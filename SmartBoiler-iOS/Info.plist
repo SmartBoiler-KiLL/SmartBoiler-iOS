@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleGetInfoString</key>
 	<string></string>
+	<key>NSAllowsArbitraryLoads</key>
+	<true/>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_bonjour._tcp</string>
